@@ -1,0 +1,94 @@
+from datetime import datetime
+import random
+
+class Account:
+    bank_name = "SC은행"
+    account_count = 0
+    account_list = []
+
+    def __init__(self, owner, balance):
+        self.owner = owner
+        self.balance = balance
+        self.account_number = self._generate_account_number()
+        self.deposit_count = 0
+        self.deposit_log = []      # 입금 내역
+        self.withdrawal_log = []   # 출금 내역
+        Account.account_count += 1
+        Account.account_list.append(self)
+
+    def _generate_account_number(self):
+        return f"{random.randint(100,999)}-{random.randint(10,99)}-{random.randint(100000,999999)}"
+
+    def deposit(self, amount):
+        if amount >= 1:
+            self.balance += amount
+            self.deposit_count += 1
+            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            self.deposit_log.append(f"{timestamp} | 입금: {amount:,}원")
+            print(f"{amount}원이 입금되었습니다. 현재 잔액: {self.balance:,}원")
+            if self.deposit_count == 5:
+                interest = int(self.balance * 0.01)
+                self.balance += interest
+                self.deposit_log.append(f"{timestamp} | 🎁 이자 지급: {interest:,}원")
+                print(f"✨입금 5회 달성! 이자 {interest:,}원이 지급되었습니다. 새로운 잔액: {self.balance:,}원")
+        else:
+            print("입금은 1원 이상만 가능합니다.")
+
+    def withdraw(self, amount):
+        if amount <= 0:
+            print("출금은 1원 이상만 가능합니다.")
+        elif amount > self.balance:
+            print("잔액이 부족합니다.")
+        else:
+            self.balance -= amount
+            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            self.withdrawal_log.append(f"{timestamp} | 출금: {amount:,}원")
+            print(f"{amount}원이 출금되었습니다. 현재 잔액: {self.balance:,}원")
+
+    def deposit_history(self):
+        print(f"\n📒 {self.owner}님의 입금 내역:")
+        if not self.deposit_log:
+            print("입금 내역이 없습니다.")
+        else:
+            for record in self.deposit_log:
+                print(record)
+
+    def withdrawal_history(self):
+        print(f"\n📕 {self.owner}님의 출금 내역:")
+        if not self.withdrawal_log:
+            print("출금 내역이 없습니다.")
+        else:
+            for record in self.withdrawal_log:
+                print(record)
+
+    def display_info(self):
+        print(f"은행이름: {Account.bank_name}, 예금주: {self.owner}, 계좌번호: {self.account_number}, 잔고: {self.balance:,}원")
+
+acc = Account("A", 500000)
+acc.deposit(100000)
+acc.deposit(200000)
+acc.withdraw(150000)
+acc.deposit(50000)
+acc.deposit(50000)
+acc.deposit(10000)  # 5회 입금 → 이자 지급됨
+acc.deposit_history()
+acc.withdrawal_history()
+...
+100000원이 입금되었습니다. 현재 잔액: 600,000원
+200000원이 입금되었습니다. 현재 잔액: 800,000원
+150000원이 출금되었습니다. 현재 잔액: 650,000원
+50000원이 입금되었습니다. 현재 잔액: 700,000원
+50000원이 입금되었습니다. 현재 잔액: 750,000원
+10000원이 입금되었습니다. 현재 잔액: 760,000원
+✨입금 5회 달성! 이자 7,600원이 지급되었습니다. 새로운 잔액: 767,600원
+
+?? A님의 입금 내역:
+2025-07-22 15:41:58 | 입금: 100,000원
+2025-07-22 15:41:58 | 입금: 200,000원
+2025-07-22 15:41:58 | 입금: 50,000원
+2025-07-22 15:41:58 | 입금: 50,000원
+2025-07-22 15:41:58 | 입금: 10,000원
+2025-07-22 15:41:58 | ?? 이자 지급: 7,600원
+
+?? A님의 출금 내역:
+2025-07-22 15:41:58 | 출금: 150,000원
