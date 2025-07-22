@@ -1,0 +1,267 @@
+import random
+
+# -----------------------------
+# Character 클래스
+# -----------------------------
+class Character:
+    def __init__(self, name, level, health, attack_power, defense):
+        self.name = name                  # 이름
+        self.level = level                # 레벨
+        self.health = health              # 체력
+        self.attack_power = attack_power  # 공격력
+        self.defense = defense            # 방어력
+
+    def is_alive(self):
+        # 체력이 0 초과인지 확인
+        return self.health > 0
+
+    def take_damage(self, damage):
+        # 방어력을 고려한 실제 데미지 계산
+        effective_damage = max(damage - self.defense, 0)
+        if effective_damage > 0:
+            self.health -= effective_damage
+            self.health = max(self.health, 0)  # 체력은 음수로 가지 않게
+            print(f"{self.name}가 {effective_damage}의 피해를 입었습니다! 현재 체력: {self.health}")
+        else:
+            print(f"{self.name}는 공격을 막아냈습니다! 현재 체력: {self.health}")
+
+    def attack_target(self, target):
+        if not self.is_alive():
+            print(f"{self.name}는 행동할 수 없습니다. (사망)")
+            return
+        damage = random.randint(1, self.attack_power)
+        print(f"{self.name}가 {target.name}를 공격합니다! (공격력: {damage})")
+        target.take_damage(damage)
+
+# -----------------------------
+# Player 클래스
+# -----------------------------
+class Player(Character):
+    def __init__(self, name):
+        # 기본 능력치로 초기화
+        super().__init__(name, level=1, health=100, attack_power=25, defense=5)
+        self.experience = 0  # 추가 속성: 경험치
+
+    def gain_experience(self, amount):
+        self.experience += amount
+        print(f"{self.name}가 경험치 {amount}를 획득했습니다. (총 경험치: {self.experience})")
+
+        # 경험치 50 이상이면 레벨업
+        if self.experience >= 50:
+            self.level_up()
+
+    def level_up(self):
+        # 경험치 50 이상일 경우 레벨업
+        if self.experience >= 50:
+            self.level += 1
+            self.attack_power += 10
+            self.defense += 5
+            self.experience -= 50
+            print(f"{self.name}가 레벨업 했습니다! 레벨: {self.level}, 공격력: {self.attack_power}, 방어력: {self.defense}")
+
+# -----------------------------
+# Monster 클래스
+# -----------------------------
+class Monster(Character):
+    def __init__(self, name, level):
+        # 레벨에 따라 랜덤 능력치 설정
+        health = random.randint(10, 30) * level
+        attack_power = random.randint(5, 20) * level
+        defense = random.randint(1, 5) * level
+        super().__init__(name, level, health, attack_power, defense)
+        print(f"[{self.name} 생성됨] 레벨: {self.level}, 체력: {self.health}, 공격력: {self.attack_power}, 방어력: {self.defense}")
+
+# -----------------------------
+# 전투 함수
+# -----------------------------
+def battle(player, monster):
+    print(f"\n전투 시작! {player.name} vs {monster.name}\n")
+
+    turn = 1
+    while player.is_alive() and monster.is_alive():
+        print(f"--- 턴 {turn} ---")
+        player.attack_target(monster)
+
+        if monster.is_alive():
+            monster.attack_target(player)
+
+        turn += 1
+        print()
+
+    if player.is_alive():
+        exp_gain = monster.level * 20
+        print(f"{player.name}가 전투에서 승리했습니다!")
+        print(f"{exp_gain}의 경험치를 획득합니다.")
+        player.gain_experience(exp_gain)
+        print("전투 승리!\n")
+    else:
+        print(f"{player.name}가 전투에서 패배했습니다..")
+        print("전투 패배..\n")
+
+# -----------------------------
+# 게임 실행 로직
+# -----------------------------
+def main():
+    # 몬스터 딕셔너리 정의
+    monster_dict = {
+        '슬라임': 1,
+        '고블린': 2,
+        '오크': 3
+    }
+
+    # 사용자 입력으로 Player 인스턴스 생성
+    player_name = input("플레이어 이름을 입력하세요: ")
+    player = Player(player_name)
+
+    # 몬스터 3마리와 전투
+    for monster_name, level in monster_dict.items():
+        print(f"\n== {monster_name} (Lv.{level}) 이(가) 등장했습니다! ==")
+        monster = Monster(monster_name, level)
+        battle(player, monster)
+
+        if not player.is_alive():
+            print("게임오버...")
+            break
+    else:
+        print("🎉 모든 몬스터를 처치했습니다! 게임 클리어! 🎉")
+
+# -----------------------------
+# 메인 함수 실행
+# -----------------------------
+if __name__ == "__main__":
+    main()
+
+플레이어 이름을 입력하세요: 서별
+
+== 슬라임 (Lv.1) 이(가) 등장했습니다! ==
+[슬라임 생성됨] 레벨: 1, 체력: 29, 공격력: 16, 방어력: 3
+
+전투 시작! 서별 vs 슬라임
+
+--- 턴 1 ---
+서별가 슬라임를 공격합니다! (공격력: 4)
+슬라임가 1의 피해를 입었습니다! 현재 체력: 28
+슬라임가 서별를 공격합니다! (공격력: 10)
+서별가 5의 피해를 입었습니다! 현재 체력: 95
+
+--- 턴 2 ---
+서별가 슬라임를 공격합니다! (공격력: 16)
+슬라임가 13의 피해를 입었습니다! 현재 체력: 15
+슬라임가 서별를 공격합니다! (공격력: 1)
+서별는 공격을 막아냈습니다! 현재 체력: 95
+
+--- 턴 3 ---
+서별가 슬라임를 공격합니다! (공격력: 17)
+슬라임가 14의 피해를 입었습니다! 현재 체력: 1
+슬라임가 서별를 공격합니다! (공격력: 11)
+서별가 6의 피해를 입었습니다! 현재 체력: 89
+
+--- 턴 4 ---
+서별가 슬라임를 공격합니다! (공격력: 20)
+슬라임가 17의 피해를 입었습니다! 현재 체력: 0
+
+서별가 전투에서 승리했습니다!
+20의 경험치를 획득합니다.
+서별가 경험치 20를 획득했습니다. (총 경험치: 20)
+전투 승리!
+
+
+== 고블린 (Lv.2) 이(가) 등장했습니다! ==
+[고블린 생성됨] 레벨: 2, 체력: 54, 공격력: 10, 방어력: 8
+
+전투 시작! 서별 vs 고블린
+
+--- 턴 1 ---
+서별가 고블린를 공격합니다! (공격력: 25)
+고블린가 17의 피해를 입었습니다! 현재 체력: 37
+고블린가 서별를 공격합니다! (공격력: 5)
+서별는 공격을 막아냈습니다! 현재 체력: 89
+
+--- 턴 2 ---
+서별가 고블린를 공격합니다! (공격력: 10)
+고블린가 2의 피해를 입었습니다! 현재 체력: 35
+고블린가 서별를 공격합니다! (공격력: 6)
+서별가 1의 피해를 입었습니다! 현재 체력: 88
+
+--- 턴 3 ---
+서별가 고블린를 공격합니다! (공격력: 4)
+고블린는 공격을 막아냈습니다! 현재 체력: 35
+고블린가 서별를 공격합니다! (공격력: 2)
+서별는 공격을 막아냈습니다! 현재 체력: 88
+
+--- 턴 4 ---
+서별가 고블린를 공격합니다! (공격력: 18)
+고블린가 10의 피해를 입었습니다! 현재 체력: 25
+고블린가 서별를 공격합니다! (공격력: 6)
+서별가 1의 피해를 입었습니다! 현재 체력: 87
+
+--- 턴 5 ---
+서별가 고블린를 공격합니다! (공격력: 21)
+고블린가 13의 피해를 입었습니다! 현재 체력: 12
+고블린가 서별를 공격합니다! (공격력: 10)
+서별가 5의 피해를 입었습니다! 현재 체력: 82
+
+--- 턴 6 ---
+서별가 고블린를 공격합니다! (공격력: 11)
+고블린가 3의 피해를 입었습니다! 현재 체력: 9
+고블린가 서별를 공격합니다! (공격력: 9)
+서별가 4의 피해를 입었습니다! 현재 체력: 78
+
+--- 턴 7 ---
+서별가 고블린를 공격합니다! (공격력: 1)
+고블린는 공격을 막아냈습니다! 현재 체력: 9
+고블린가 서별를 공격합니다! (공격력: 8)
+서별가 3의 피해를 입었습니다! 현재 체력: 75
+
+--- 턴 8 ---
+서별가 고블린를 공격합니다! (공격력: 11)
+고블린가 3의 피해를 입었습니다! 현재 체력: 6
+고블린가 서별를 공격합니다! (공격력: 7)
+서별가 2의 피해를 입었습니다! 현재 체력: 73
+
+--- 턴 9 ---
+서별가 고블린를 공격합니다! (공격력: 10)
+고블린가 2의 피해를 입었습니다! 현재 체력: 4
+고블린가 서별를 공격합니다! (공격력: 10)
+서별가 5의 피해를 입었습니다! 현재 체력: 68
+
+--- 턴 10 ---
+서별가 고블린를 공격합니다! (공격력: 1)
+고블린는 공격을 막아냈습니다! 현재 체력: 4
+고블린가 서별를 공격합니다! (공격력: 2)
+서별는 공격을 막아냈습니다! 현재 체력: 68
+
+--- 턴 11 ---
+서별가 고블린를 공격합니다! (공격력: 18)
+고블린가 10의 피해를 입었습니다! 현재 체력: 0
+
+서별가 전투에서 승리했습니다!
+40의 경험치를 획득합니다.
+서별가 경험치 40를 획득했습니다. (총 경험치: 60)
+서별가 레벨업 했습니다! 레벨: 2, 공격력: 35, 방어력: 10
+전투 승리!
+
+
+== 오크 (Lv.3) 이(가) 등장했습니다! ==
+[오크 생성됨] 레벨: 3, 체력: 45, 공격력: 21, 방어력: 3
+
+전투 시작! 서별 vs 오크
+
+--- 턴 1 ---
+서별가 오크를 공격합니다! (공격력: 19)
+오크가 16의 피해를 입었습니다! 현재 체력: 29
+오크가 서별를 공격합니다! (공격력: 5)
+서별는 공격을 막아냈습니다! 현재 체력: 68
+
+--- 턴 2 ---
+서별가 오크를 공격합니다! (공격력: 32)
+오크가 29의 피해를 입었습니다! 현재 체력: 0
+
+서별가 전투에서 승리했습니다!
+60의 경험치를 획득합니다.
+서별가 경험치 60를 획득했습니다. (총 경험치: 70)
+서별가 레벨업 했습니다! 레벨: 3, 공격력: 45, 방어력: 15
+전투 승리!
+
+?? 모든 몬스터를 처치했습니다! 게임 클리어! ??
+>>>
