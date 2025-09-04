@@ -1,6 +1,153 @@
 -- 고객 추천 브라질 전자상 데이터
 -- 주제: 고객
 -- 좋은 품질, 착한 가격, 신뢰도, 가성비(좋은 가격 + 신뢰도), 트렌드(좋은 가격 + 착한 가격, 신뢰도)분석.
+--------------------------------------------------------------------------------------------
+추천 시스템 1: 좋은 품질 (Quality First)
+
+추천 시스템 이름
+→ “좋은 품질을 보장해요” / “평점이 높은 상품 추천 시스템”
+
+추천 시스템의 테마
+
+고객이 후회 없는 품질을 얻을 수 있도록, 평점이 4.5 이상인 상품만 추천
+
+구현 로직 (SQL)
+
+SELECT product_id, product_name, rating, rating_count, discounted_price, actual_price
+FROM `my-project-55758-470803.A004.A004_cleaned`
+WHERE rating >= 4.5
+ORDER BY rating DESC, rating_count DESC
+LIMIT 20;
+
+
+ 결과
+
+평점이 높은 상품 위주로 구성
+
+리뷰 수가 적더라도 평점이 높은 신상품도 발굴 가능
+
+고객 관점: “조금 비싸더라도 최고의 품질을 원해요”
+
+--------------------------------------------------------------------------------------------------
+ 추천 시스템 2: 착한 가격 (Best Price)
+
+추천 시스템 이름
+→ “지금 가장 싸게 살 수 있는 상품이에요” / “최대 할인율 추천 시스템”
+
+추천 시스템의 테마
+
+고객이 최대 할인 혜택을 누릴 수 있도록 할인율이 높은 상품만 추천
+
+구현 로직 (SQL)
+
+SELECT product_id, product_name, discounted_price, actual_price, discount_percentage, rating, rating_count
+FROM `my-project-55758-470803.A004.A004_cleaned`
+ORDER BY discount_percentage DESC
+LIMIT 20;
+
+
+  결과
+
+90% 이상 할인 상품도 발견됨
+
+품질보다는 금전적 혜택에 초점을 둔 추천
+
+고객 관점: “놓치면 손해인 특가 상품을 추천받고 싶어요”
+-------------------------------------------------------------------------------------
+ 추천 시스템 3: 신뢰성 (Trustworthy Choice)
+
+추천 시스템 이름
+→ “많은 사람들이 인정한 국민템이에요” / “리뷰 수 기반 신뢰성 추천 시스템”
+
+추천 시스템의 테마
+
+고객이 안심하고 구매할 수 있도록 리뷰 수가 많고 평점이 4.0 이상인 상품만 추천
+
+구현 로직 (SQL)
+
+SELECT product_id, product_name, rating, rating_count, discounted_price, actual_price, discount_percentage
+FROM `my-project-55758-470803.A004.A004_cleaned`
+WHERE rating >= 4.0
+ORDER BY rating_count DESC
+LIMIT 20;
+
+
+ 결과
+
+수십만 건 리뷰를 가진 상품이 상위에 랭크
+
+사회적 증거(많은 사람들의 검증)를 기반으로 한 추천
+
+고객 관점: “다른 사람들이 많이 쓰고 인정한 제품을 선택하고 싶어요”
+---------------------------------------------------------------------------
+ 추천 시스템 4: 가성비 (Smart Value)
+
+추천 시스템 이름
+→ “돈값 제대로 하는 상품이에요” / “가성비 최강 추천 시스템”
+
+추천 시스템의 테마
+
+고객이 가격 대비 최고의 효용을 얻을 수 있도록, 평점·리뷰 수·가격을 종합
+
+구현 로직 (SQL)
+
+SELECT product_id, product_name, rating, rating_count, discounted_price, actual_price, discount_percentage,
+       ROUND((rating * LOG(rating_count + 1)) / discounted_price, 4) AS value_score
+FROM `my-project-55758-470803.A004.A004_cleaned`
+WHERE rating IS NOT NULL AND rating_count IS NOT NULL AND discounted_price > 0
+ORDER BY value_score DESC
+LIMIT 20;
+
+
+결과
+
+초저가(39원대) 상품들이 압도적인 가성비 1위
+
+평점이 조금 낮아도 가격이 워낙 저렴해 높은 점수 획득
+
+고객 관점: “조금 부족해도 싸게, 똑똑하게 소비하고 싶어요”
+--------------------------------------------------------------------------------------------------------
+
+추천 시스템 5: 트렌드 (Hot & Rising)
+
+추천 시스템 이름
+→ “요즘 가장 핫한 상품이에요” / “리뷰 + 평점 + 할인율 기반 트렌드 추천 시스템”
+
+추천 시스템의 테마
+
+고객이 최신 인기 흐름을 반영한 상품을 고를 수 있도록, 리뷰 수 × 평점 × 할인율을 결합
+
+구현 로직 (SQL)
+
+SELECT product_id, product_name, rating, rating_count, discounted_price, actual_price, discount_percentage,
+       ROUND(rating * LOG(rating_count + 1) * (1 + discount_percentage), 2) AS trend_score
+FROM `my-project-55758-470803.A004.A004_cleaned`
+WHERE rating >= 4.0
+ORDER BY trend_score DESC
+LIMIT 20;
+
+
+결과
+
+아마존 Basics HDMI 케이블, 삼성 EVO 메모리카드 등 국민템이 상위권
+
+리뷰 수가 많고 할인율도 높아 최근 고객들이 실제로 구매할 가능성이 큼
+
+고객 관점: “요즘 사람들이 많이 사는 핫 아이템을 나도 갖고 싶어요”
+----------------------------------------------------------------------------------------------
+
+✅ 최종 요약
+
+좋은 품질: 평점 중심 (프리미엄 관점)
+
+착한 가격: 할인율 중심 (혜택 극대화)
+
+신뢰성: 리뷰 수 중심 (사회적 증거)
+
+가성비: 평점 + 리뷰 + 가격 종합 (실속)
+
+트렌드: 리뷰 + 평점 + 할인율 결합 (핫 아이템)
+------------------------------------------------------------------------------------------
 
 ---- 1. 전체 데이터 탐색
 
