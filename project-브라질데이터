@@ -1,0 +1,253 @@
+-- 고객 추천 브라질 전자상 데이터
+-- 주제: 고객
+-- 좋은 품질, 착한 가격, 신뢰도, 가성비(좋은 가격 + 신뢰도), 트렌드(좋은 가격 + 착한 가격, 신뢰도)분석.
+
+---- 1. 전체 데이터 탐색
+
+-- -- 전체 행 수 확인 1465
+SELECT COUNT(*) AS total_rows
+FROM `my-project-55758-470803.A004.A004`;
+
+-- -- 앞부분 미리보기
+SELECT *
+FROM `my-project-55758-470803.A004.A004`
+LIMIT 10;
+
+-- -- 결측치 확인 rating_count null값 2개 확인
+SELECT
+ SUM(CASE WHEN discounted_price IS NULL THEN 1 ELSE 0 END) AS null_discounted_price,
+ SUM(CASE WHEN actual_price IS NULL THEN 1 ELSE 0 END) AS null_actual_price,
+ SUM(CASE WHEN discount_percentage IS NULL THEN 1 ELSE 0 END) AS null_discount_percentage,
+ SUM(CASE WHEN rating IS NULL THEN 1 ELSE 0 END) AS null_rating,
+ SUM(CASE WHEN rating_count IS NULL THEN 1 ELSE 0 END) AS null_rating_count
+FROM `my-project-55758-470803.A004.A004`;
+
+-- -- 가격 분포
+SELECT
+ MIN(discounted_price) AS min_discounted_price,
+ MAX(discounted_price) AS max_discounted_price,
+ AVG(discounted_price) AS avg_discounted_price,
+ MIN(actual_price) AS min_actual_price,
+ MAX(actual_price) AS max_actual_price,
+ AVG(actual_price) AS avg_actual_price,
+ MIN(discount_percentage) AS min_discount_percentage,
+ MAX(discount_percentage) AS max_discount_percentage,
+ AVG(discount_percentage) AS avg_discount_percentage
+FROM `my-project-55758-470803.A004.A004`;
+
+-- -- 평점 분포 요약 (숫자로 변환 가능한 값만 사용)
+SELECT
+ MIN(CAST(rating AS FLOAT64)) AS min_rating,
+ MAX(CAST(rating AS FLOAT64)) AS max_rating,
+ AVG(CAST(rating AS FLOAT64)) AS avg_rating,
+ APPROX_QUANTILES(CAST(rating AS FLOAT64), 4)[OFFSET(1)] AS q1_rating,
+ APPROX_QUANTILES(CAST(rating AS FLOAT64), 4)[OFFSET(2)] AS median_rating,
+ APPROX_QUANTILES(CAST(rating AS FLOAT64), 4)[OFFSET(3)] AS q3_rating
+FROM `my-project-55758-470803.A004.A004`
+WHERE SAFE_CAST(rating AS FLOAT64) IS NOT NULL;
+
+-- -- 평점 구간 별 상품수
+SELECT
+ CASE
+ WHEN CAST(rating AS FLOAT64) < 2 THEN '1~2점 미만'
+ WHEN CAST(rating AS FLOAT64) < 3 THEN '2~3점 미만'
+ WHEN CAST(rating AS FLOAT64) < 4 THEN '3~4점 미만'
+ WHEN CAST(rating AS FLOAT64) < 5 THEN '4~5점 미만'
+ ELSE '5점'
+ END AS rating_band,
+ COUNT(*) AS product_count
+FROM `my-project-55758-470803.A004.A004`
+WHERE SAFE_CAST(rating AS FLOAT64) IS NOT NULL
+GROUP BY rating_band
+ORDER BY rating_band;
+
+-- -- 평점 4.0 이상 AND 리뷰 수 5개 이상 상품만 필터링
+SELECT 
+ product_id,
+ product_name,
+ CAST(rating AS FLOAT64) AS rating,
+  rating_count
+FROM `my-project-55758-470803.A004.A004`
+WHERE SAFE_CAST(rating AS FLOAT64) BETWEEN 4.0 AND 5.0
+ AND rating_count >= 5
+ORDER BY rating_count DESC
+
+-- -- 신뢰성 조건(평점 4.0 이상 & 리뷰 수 5개 이상)을 만족하는 상품만 저장
+CREATE OR REPLACE TABLE `my-project-55758-470803.A004.A004_filtered` AS
+SELECT 
+ product_id,
+ product_name,
+ category,
+ discounted_price,
+ actual_price,
+ discount_percentage,
+ CAST(rating AS FLOAT64) AS rating,
+ rating_count,
+ about_product,
+ img_link,
+ product_link
+FROM `my-project-55758-470803.A004.A004`
+WHERE SAFE_CAST(rating AS FLOAT64) BETWEEN 4.0 AND 5.0
+ AND rating_count >= 5;
+
+--   -- 좋은 품질: 평점 4.5 이상 상품 추출
+SELECT 
+ product_id,
+ product_name,
+ CAST(rating AS FLOAT64) AS rating,
+ rating_count,
+ discounted_price,
+ actual_price,
+ discount_percentage
+FROM `my-project-55758-470803.A004.A004_filtered`
+WHERE CAST(rating AS FLOAT64) >= 4.5
+ORDER BY rating DESC, rating_count DESC
+LIMIT 20;
+
+SELECT *
+FROM `my-project-55758-470803.A004.A004`
+WHERE rating_count IS NOT NULL   -- 조건 필터링
+ORDER BY rating_count DESC
+LIMIT 20;
+
+-----------------------------------------------------------------------------------------
+-- -- 2. 주제별 분석
+
+-- -- 좋은 품질 추천: 평점 4.5 이상 상품
+SELECT 
+ product_id,
+ product_name,
+ CAST(rating AS FLOAT64) AS rating,
+ rating_count,
+ discounted_price,
+  actual_price,
+  discount_percentage
+FROM `my-project-55758-470803.A004.A004`
+WHERE SAFE_CAST(rating AS FLOAT64) >= 4.5
+ AND rating_count IS NOT NULL
+ORDER BY rating DESC, rating_count DESC
+LIMIT 20;
+
+-------------------------------------------------------
+CREATE OR REPLACE TABLE `my-project-55758-470803.A004.A004_cleaned` AS
+WITH temp AS (
+ SELECT
+  product_id,
+  product_name,
+  category,
+  discounted_price,
+  actual_price,
+  SAFE_CAST(discount_percentage AS FLOAT64) AS discount_percentage,
+  SAFE_CAST(rating AS FLOAT64) AS rating,
+  rating_count,
+  about_product,
+  img_link,
+  product_link
+ FROM `my-project-55758-470803.A004.A004`
+)
+SELECT *
+FROM temp
+WHERE discount_percentage IS NOT NULL;
+
+-- -- 착한 가격 추천: 할인율 상위 상품 추출
+SELECT 
+ product_id,
+ product_name,
+ discounted_price,
+ actual_price,
+ discount_percentage,
+ rating,
+ rating_count
+FROM `my-project-55758-470803.A004.A004_cleaned`
+ORDER BY discount_percentage DESC
+LIMIT 20;
+
+-----------------------------------------------------
+
+-- -- 신뢰성 추천: 평점 4.0 이상 + 리뷰 수 많은 상품
+SELECT 
+ product_id,
+ product_name,
+ rating,
+ rating_count,
+ discounted_price,
+ actual_price,
+ discount_percentage
+FROM `my-project-55758-470803.A004.A004_cleaned`
+WHERE rating >= 4.0
+ AND rating_count IS NOT NULL
+ORDER BY rating_count DESC
+LIMIT 20;
+-------------------------------------------------------------
+
+-- -- 가성비 추천: 평점, 리뷰 수, 가격을 종합한 Value Score
+SELECT 
+ product_id,
+ product_name,
+ rating,
+ rating_count,
+ discounted_price,
+ actual_price,
+ discount_percentage,
+  ROUND((rating * LOG(rating_count + 1)) / discounted_price, 4) AS value_score
+FROM `my-project-55758-470803.A004.A004_cleaned`
+WHERE rating IS NOT NULL
+ AND rating_count IS NOT NULL
+ AND discounted_price > 0
+ORDER BY value_score DESC
+LIMIT 20;
+
+--------------------------------------------------------------
+
+-- -- 트렌드 추천: 리뷰 수 × 평점 × 할인율 기반
+SELECT 
+ product_id,
+ product_name,
+ rating,
+ rating_count,
+ discounted_price,
+ actual_price,
+ discount_percentage,
+ ROUND(rating * LOG(rating_count + 1) * (1 + discount_percentage), 2) AS trend_score
+FROM `my-project-55758-470803.A004.A004_cleaned`
+WHERE rating >= 4.0
+ AND rating_count IS NOT NULL
+ AND discount_percentage IS NOT NULL
+ORDER BY trend_score DESC
+LIMIT 20;
+
+---------------------------------------------------------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
